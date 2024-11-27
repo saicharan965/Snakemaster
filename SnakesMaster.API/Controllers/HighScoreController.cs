@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SnakesMaster.API.Data;
+using SnakesMaster.API.DTOs.HighScore;
 using SnakesMaster.API.Models;
 
 namespace SnakesMaster.API.Controllers
@@ -12,6 +13,7 @@ namespace SnakesMaster.API.Controllers
     public class ScoreController : ControllerBase
     {
         private readonly ApplicationDBContext _appDbContext;
+        private readonly ILogger<ScoreController> _logger;
 
         public ScoreController(ApplicationDBContext appDbContext)
         {
@@ -47,22 +49,26 @@ namespace SnakesMaster.API.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> CreateScore([FromBody] int scoreValue, CancellationToken cancellationToken)
+        public async Task<ActionResult<CreateScoreResponse>> CreateScore([FromBody] int scoreValue, CancellationToken cancellationToken)
         {
             if (scoreValue < 0)
-                return BadRequest("Score must be greater than 0.");
+            {
+                return BadRequest("Score must be greater than or equal to 0.");
+            }
 
             var auth0Identifier = HttpContext.Items["Auth0Identifier"] as string;
-
             if (string.IsNullOrEmpty(auth0Identifier))
-                return Unauthorized("Auth0Identifier is missing or invalid.");
+            {
+                return Unauthorized("Auth0 identifier is missing or invalid.");
+            }
 
             var user = await _appDbContext.Users
                 .Where(u => u.Auth0Identifier == auth0Identifier && u.IsActive && !u.IsDeleted)
                 .FirstOrDefaultAsync(cancellationToken);
-
             if (user == null)
+            {
                 return BadRequest("The user does not exist or is inactive.");
+            }
 
             var newScore = new HighScore
             {
@@ -72,10 +78,35 @@ namespace SnakesMaster.API.Controllers
                 ScoredBy = user.PublicIdentifier
             };
 
-            _appDbContext.HighScores.Add(newScore);
-            await _appDbContext.SaveChangesAsync(cancellationToken);
+            try
+            {
+                _appDbContext.HighScores.Add(newScore);
+                await _appDbContext.SaveChangesAsync(cancellationToken);
+                var rank = await GetScoreRank(scoreValue, cancellationToken);
 
-            return CreatedAtAction(nameof(GetScoreById), new { publicIdentifier = newScore.PublicIdentifier }, newScore);
+                var result = new CreateScoreResponse
+                {
+                    Score = newScore.Score,
+                    Rank = GetOrdinal(rank),
+                };
+
+                return CreatedAtAction(nameof(GetScoreById), new { publicIdentifier = newScore.PublicIdentifier }, result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while saving the score.");
+                return StatusCode(500, "An error occurred while saving the score.");
+            }
+        }
+
+        private async Task<int> GetScoreRank(int scoreValue, CancellationToken cancellationToken)
+        {
+            var leaderboard = await _appDbContext.HighScores
+                .Where(h => h.Score >= scoreValue)
+                .OrderByDescending(h => h.Score)
+                .ToListAsync(cancellationToken);
+            var rank = leaderboard.FindIndex(h => h.Score == scoreValue) + 1;
+            return rank;
         }
 
         [HttpDelete("{publicIdentifier:guid}")]
@@ -92,5 +123,26 @@ namespace SnakesMaster.API.Controllers
 
             return NoContent();
         }
+
+        private string GetOrdinal(int number)
+        {
+            if (number <= 0)
+                return number.ToString();
+
+            int ones = number % 10;
+            int tens = (number % 100) / 10;
+
+            if (tens == 1)
+                return number + "th";
+
+            switch (ones)
+            {
+                case 1: return number + "st";
+                case 2: return number + "nd";
+                case 3: return number + "rd";
+                default: return number + "th";
+            }
+        }
     }
 }
+

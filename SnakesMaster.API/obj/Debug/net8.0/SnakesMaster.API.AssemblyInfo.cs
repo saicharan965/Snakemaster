@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SnakesMaster.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f828a4aaa5bba8acb9f795604f329889a7561884")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+34a0b7ff308e65f8cf594f16f52b729842c3c2b9")]
 [assembly: System.Reflection.AssemblyProductAttribute("SnakesMaster.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SnakesMaster.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
