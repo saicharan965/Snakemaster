@@ -20,6 +20,74 @@ namespace SnakesMaster.API.Controllers
             _appDbContext = appDbContext;
         }
 
+        [HttpGet]
+        public async Task<ActionResult<PaginatedLeaderboardResponse>> GetLeaderboard(CancellationToken cancellationToken,
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 10)
+        {
+            var skip = (page - 1) * pageSize;
+            var leaderboardQuery = _appDbContext.HighScores
+                .Where(h => h.Score > 0)
+                .GroupBy(h => new { h.ScoredBy, h.Score })
+                .Select(group => new
+                {
+                    group.Key.ScoredBy,
+                    group.Key.Score,
+                    DateAchieved = group.Max(h => h.DateAchieved)
+                })
+                .OrderByDescending(h => h.Score)
+                .ThenByDescending(h => h.DateAchieved)
+                .Skip(skip)
+                .Take(pageSize);
+
+            var leaderboard = await leaderboardQuery
+                .Select(h => new
+                {
+                    h.ScoredBy,
+                    h.Score,
+                    h.DateAchieved,
+                    ScoredByDetails = _appDbContext.Users
+                        .Where(u => u.PublicIdentifier == h.ScoredBy && u.IsActive && !u.IsDeleted)
+                        .Select(u => new
+                        {
+                            u.PublicIdentifier,
+                            u.FirstName,
+                            u.LastName,
+                            u.ProfilePictureUrl
+                        })
+                        .FirstOrDefault()
+                })
+                .ToListAsync(cancellationToken);
+
+            var totalScores = await _appDbContext.HighScores
+                .Where(h => h.Score > 0)
+                .GroupBy(h => new { h.ScoredBy, h.Score })
+                .CountAsync(cancellationToken);
+
+            var leaderboardWithRank = leaderboard
+                .Select((item, index) => new LeaderboardItemResponse
+                {
+                    PublicIdentifier = item.ScoredBy,
+                    Score = item.Score,
+                    DateAchieved = item.DateAchieved,
+                    Name = $"{item.ScoredByDetails?.FirstName} {item.ScoredByDetails?.LastName}",
+                    ProfilePicUrl = item.ScoredByDetails?.ProfilePictureUrl,
+                    Rank = GetOrdinal(index + 1)
+                })
+                .ToList();
+
+            var totalPages = (int)Math.Ceiling((double)totalScores / pageSize);
+
+            var response = new PaginatedLeaderboardResponse
+            {
+                TotalPages = totalPages,
+                CurrentPage = page,
+                Leaderboard = leaderboardWithRank
+            };
+
+            return Ok(response);
+        }
+
         [HttpGet("{publicIdentifier:guid}")]
         public async Task<ActionResult<GetHighScoreResponse>> GetScoreById(Guid publicIdentifier, CancellationToken cancellationToken)
         {
@@ -55,13 +123,11 @@ namespace SnakesMaster.API.Controllers
             {
                 return BadRequest("Score must be greater than or equal to 0.");
             }
-
             var auth0Identifier = HttpContext.Items["Auth0Identifier"] as string;
             if (string.IsNullOrEmpty(auth0Identifier))
             {
                 return Unauthorized("Auth0 identifier is missing or invalid.");
             }
-
             var user = await _appDbContext.Users
                 .Where(u => u.Auth0Identifier == auth0Identifier && u.IsActive && !u.IsDeleted)
                 .FirstOrDefaultAsync(cancellationToken);
@@ -69,44 +135,44 @@ namespace SnakesMaster.API.Controllers
             {
                 return BadRequest("The user does not exist or is inactive.");
             }
+            var existingScore = await _appDbContext.HighScores
+                .Where(h => h.ScoredBy == user.PublicIdentifier && h.Score == scoreValue)
+                .FirstOrDefaultAsync(cancellationToken);
 
-            var newScore = new HighScore
+            if (existingScore != null)
             {
-                PublicIdentifier = Guid.NewGuid(),
-                Score = scoreValue,
-                DateAchieved = DateTime.UtcNow,
-                ScoredBy = user.PublicIdentifier
-            };
-
+                existingScore.DateAchieved = DateTime.UtcNow;
+                _appDbContext.HighScores.Update(existingScore);
+            }
+            else
+            {
+                var newScore = new HighScore
+                {
+                    PublicIdentifier = Guid.NewGuid(),
+                    Score = scoreValue,
+                    DateAchieved = DateTime.UtcNow,
+                    ScoredBy = user.PublicIdentifier
+                };
+                _appDbContext.HighScores.Add(newScore);
+            }
             try
             {
-                _appDbContext.HighScores.Add(newScore);
                 await _appDbContext.SaveChangesAsync(cancellationToken);
                 var rank = await GetScoreRank(scoreValue, cancellationToken);
 
                 var result = new CreateScoreResponse
                 {
-                    Score = newScore.Score,
-                    Rank = GetOrdinal(rank),
+                    Score = scoreValue,
+                    Rank = GetOrdinal(rank)
                 };
 
-                return CreatedAtAction(nameof(GetScoreById), new { publicIdentifier = newScore.PublicIdentifier }, result);
+                return CreatedAtAction(nameof(GetScoreById), new { publicIdentifier = existingScore?.PublicIdentifier }, result);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while saving the score.");
                 return StatusCode(500, "An error occurred while saving the score.");
             }
-        }
-
-        private async Task<int> GetScoreRank(int scoreValue, CancellationToken cancellationToken)
-        {
-            var leaderboard = await _appDbContext.HighScores
-                .Where(h => h.Score >= scoreValue)
-                .OrderByDescending(h => h.Score)
-                .ToListAsync(cancellationToken);
-            var rank = leaderboard.FindIndex(h => h.Score == scoreValue) + 1;
-            return rank;
         }
 
         [HttpDelete("{publicIdentifier:guid}")]
@@ -122,6 +188,16 @@ namespace SnakesMaster.API.Controllers
             await _appDbContext.SaveChangesAsync(cancellationToken);
 
             return NoContent();
+        }
+
+        private async Task<int> GetScoreRank(int scoreValue, CancellationToken cancellationToken)
+        {
+            var leaderboard = await _appDbContext.HighScores
+                .Where(h => h.Score >= scoreValue)
+                .OrderByDescending(h => h.Score)
+                .ToListAsync(cancellationToken);
+            var rank = leaderboard.FindIndex(h => h.Score == scoreValue) + 1;
+            return rank;
         }
 
         private string GetOrdinal(int number)

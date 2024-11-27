@@ -43,6 +43,37 @@
   },
   {
     "ContainingType": "SnakesMaster.API.Controllers.ScoreController",
+    "Method": "GetLeaderboard",
+    "RelativePath": "api/Score/GetLeaderboard",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "pageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SnakesMaster.API.DTOs.HighScore.PaginatedLeaderboardResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "SnakesMaster.API.Controllers.ScoreController",
     "Method": "GetScoreById",
     "RelativePath": "api/Score/GetScoreById/{publicIdentifier}",
     "HttpMethod": "GET",
