@@ -1,20 +1,24 @@
 {
   "format": 1,
   "restore": {
-    "D:\\code\\Snakemaster\\SnakesMaster.API\\SnakesMaster.API.csproj": {}
+    "D:\\__CODE__\\Snakemaster\\SnakesMaster.API\\SnakesMaster.API.csproj": {}
   },
   "projects": {
-    "D:\\code\\Snakemaster\\SnakesMaster.API\\SnakesMaster.API.csproj": {
+    "D:\\__CODE__\\Snakemaster\\SnakesMaster.API\\SnakesMaster.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\code\\Snakemaster\\SnakesMaster.API\\SnakesMaster.API.csproj",
+        "projectUniqueName": "D:\\__CODE__\\Snakemaster\\SnakesMaster.API\\SnakesMaster.API.csproj",
         "projectName": "SnakesMaster.API",
-        "projectPath": "D:\\code\\Snakemaster\\SnakesMaster.API\\SnakesMaster.API.csproj",
-        "packagesPath": "C:\\Users\\SaiCharan\\.nuget\\packages\\",
-        "outputPath": "D:\\code\\Snakemaster\\SnakesMaster.API\\obj\\",
+        "projectPath": "D:\\__CODE__\\Snakemaster\\SnakesMaster.API\\SnakesMaster.API.csproj",
+        "packagesPath": "C:\\Users\\kutik\\.nuget\\packages\\",
+        "outputPath": "D:\\__CODE__\\Snakemaster\\SnakesMaster.API\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "C:\\Users\\SaiCharan\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\kutik\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -22,9 +26,7 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
-          "https://api.nuget.org/v3/index.json": {},
-          "https://nuget.devexpress.com/TrkmpdZrDStoJW3lsgeOeTq8pT9YDDKlw6FTFxPxxsv3vSPm3X/api": {}
+          "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
@@ -97,7 +99,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.404/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files (x86)\\dotnet\\sdk\\8.0.404/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
