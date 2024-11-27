@@ -1,34 +1,24 @@
 [
   {
-    "ContainingType": "SnakesMaster.API.Controllers.HighScoreController",
-    "Method": "CreateHighScore",
-    "RelativePath": "api/HighScore/CreateHighScore",
+    "ContainingType": "SnakesMaster.API.Controllers.ScoreController",
+    "Method": "CreateScore",
+    "RelativePath": "api/Score/CreateScore",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
-        "Name": "request",
-        "Type": "CreateHighScoreRequest",
+        "Name": "scoreValue",
+        "Type": "System.Int32",
         "IsRequired": true
       }
     ],
-    "ReturnTypes": [
-      {
-        "Type": "CreateHighScoreResponse",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ]
+    "ReturnTypes": []
   },
   {
-    "ContainingType": "SnakesMaster.API.Controllers.HighScoreController",
-    "Method": "DeleteHighScore",
-    "RelativePath": "api/HighScore/DeleteHighScore/{publicIdentifier}",
+    "ContainingType": "SnakesMaster.API.Controllers.ScoreController",
+    "Method": "DeleteScore",
+    "RelativePath": "api/Score/DeleteScore/{publicIdentifier}",
     "HttpMethod": "DELETE",
     "IsController": true,
     "Order": 0,
@@ -42,9 +32,9 @@
     "ReturnTypes": []
   },
   {
-    "ContainingType": "SnakesMaster.API.Controllers.HighScoreController",
-    "Method": "GetHighScoreById",
-    "RelativePath": "api/HighScore/GetHighScoreById/{publicIdentifier}",
+    "ContainingType": "SnakesMaster.API.Controllers.ScoreController",
+    "Method": "GetScoreById",
+    "RelativePath": "api/Score/GetScoreById/{publicIdentifier}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -57,7 +47,7 @@
     ],
     "ReturnTypes": [
       {
-        "Type": "GetHighScoresResponse",
+        "Type": "GetHighScoreResponse",
         "MediaTypes": [
           "text/plain",
           "application/json",
@@ -66,58 +56,6 @@
         "StatusCode": 200
       }
     ]
-  },
-  {
-    "ContainingType": "SnakesMaster.API.Controllers.HighScoreController",
-    "Method": "GetHighScores",
-    "RelativePath": "api/HighScore/GetHighScores",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "page",
-        "Type": "System.Int32",
-        "IsRequired": false
-      },
-      {
-        "Name": "pageSize",
-        "Type": "System.Int32",
-        "IsRequired": false
-      }
-    ],
-    "ReturnTypes": [
-      {
-        "Type": "System.Collections.Generic.IEnumerable\u00601[[GetHighScoresResponse, SnakesMaster.API, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ]
-  },
-  {
-    "ContainingType": "SnakesMaster.API.Controllers.HighScoreController",
-    "Method": "UpdateHighScore",
-    "RelativePath": "api/HighScore/UpdateHighScore/{publicIdentifier}",
-    "HttpMethod": "PUT",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "publicIdentifier",
-        "Type": "System.Guid",
-        "IsRequired": true
-      },
-      {
-        "Name": "request",
-        "Type": "CreateHighScoreRequest",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
   },
   {
     "ContainingType": "SnakesMaster.API.Controllers.UserController",
@@ -135,7 +73,7 @@
     ],
     "ReturnTypes": [
       {
-        "Type": "SnakesMaster.API.DTOs.User.UserDetailsResponse",
+        "Type": "SnakesMaster.API.DTOs.User.CreateUserResponse",
         "MediaTypes": [
           "text/plain",
           "application/json",

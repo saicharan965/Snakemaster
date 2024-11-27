@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SnakesMaster.API.Data;
 using SnakesMaster.API.DTOs.User;
@@ -17,25 +18,40 @@ namespace SnakesMaster.API.Controllers
             _appDbContext = appDbContext;
         }
 
+        [Authorize]
         [HttpPost]
-        public async Task<ActionResult<UserDetailsResponse>> CreateOrGetUser([FromBody] CreateUserRequest userDetails, CancellationToken cancellationToken)
+        public async Task<ActionResult<CreateUserResponse>> CreateOrGetUser([FromBody] CreateUserRequest userDetails, CancellationToken cancellationToken)
         {
             if (userDetails == null)
             {
                 return BadRequest("User details cannot be null.");
             }
 
-            var existingUser = await _appDbContext.Users
-                .FirstOrDefaultAsync(u => u.Auth0Identifier == userDetails.Auth0Identifier, cancellationToken);
-
-            if (existingUser != null)
+            var auth0Identifier = HttpContext.Items["Auth0Identifier"] as string;
+            if (string.IsNullOrEmpty(auth0Identifier))
             {
-                return Ok(MapToUserDetailsResponse(existingUser));
+                return Unauthorized("Auth0 Identifier is missing from the request context.");
+            }
+
+            var user = await _appDbContext.Users
+                .FirstOrDefaultAsync(u => u.Auth0Identifier == auth0Identifier, cancellationToken);
+
+            if (user != null)
+            {
+                return Ok(new CreateUserResponse
+                {
+                    PublicIdentifier = user.PublicIdentifier,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    EmailId = user.EmailId,
+                    ProfilePictureUrl = user.ProfilePictureUrl,
+                    Message = "User fetched successfully."
+                });
             }
 
             var newUser = new User
             {
-                Auth0Identifier = userDetails.Auth0Identifier,
+                Auth0Identifier = auth0Identifier,
                 PublicIdentifier = Guid.NewGuid(),
                 FirstName = userDetails.FirstName,
                 LastName = userDetails.LastName,
@@ -48,47 +64,55 @@ namespace SnakesMaster.API.Controllers
             _appDbContext.Users.Add(newUser);
             await _appDbContext.SaveChangesAsync(cancellationToken);
 
-            return CreatedAtAction(nameof(GetUserById), new { id = newUser.PublicIdentifier }, MapToUserDetailsResponse(newUser));
+            return CreatedAtAction(nameof(GetUserById), new { id = newUser.PublicIdentifier }, new CreateUserResponse
+            {
+                PublicIdentifier = newUser.PublicIdentifier,
+                FirstName = newUser.FirstName,
+                LastName = newUser.LastName,
+                EmailId = newUser.EmailId,
+                ProfilePictureUrl = newUser.ProfilePictureUrl,
+                Message = "User created successfully."
+            });
         }
 
         [HttpPut]
         public async Task<ActionResult<UserDetailsResponse>> UpdateUser([FromBody] UpdateUserRequest userDetails, CancellationToken cancellationToken)
         {
-            var userToUpdate = await _appDbContext.Users
+            var user = await _appDbContext.Users
                 .FirstOrDefaultAsync(u => u.PublicIdentifier == userDetails.PublicIdentifier, cancellationToken);
 
-            if (userToUpdate == null)
+            if (user == null)
             {
                 return NotFound($"The user with ID {userDetails.PublicIdentifier} was not found.");
             }
 
-            userToUpdate.ProfilePictureUrl = userDetails.ProfilePictureUrl;
-            userToUpdate.FirstName = userDetails.FirstName;
-            userToUpdate.LastName = userDetails.LastName;
-            userToUpdate.EmailId = userDetails.EmailId;
+            user.ProfilePictureUrl = userDetails.ProfilePictureUrl;
+            user.FirstName = userDetails.FirstName;
+            user.LastName = userDetails.LastName;
+            user.EmailId = userDetails.EmailId;
 
             await _appDbContext.SaveChangesAsync(cancellationToken);
 
-            return Ok(MapToUserDetailsResponse(userToUpdate));
+            return Ok(MapToUserDetailsResponse(user));
         }
 
         [HttpDelete("{id:guid}")]
         public async Task<ActionResult> DeleteUser([FromRoute] Guid id, CancellationToken cancellationToken)
         {
-            if (id.Equals(Guid.Empty))
+            if (id == Guid.Empty)
             {
                 return BadRequest("User Id cannot be empty GUID.");
             }
 
-            var userToDelete = await _appDbContext.Users
+            var user = await _appDbContext.Users
                 .FirstOrDefaultAsync(u => u.PublicIdentifier == id, cancellationToken);
 
-            if (userToDelete == null)
+            if (user == null)
             {
                 return NotFound($"The user with ID {id} was not found.");
             }
 
-            userToDelete.IsDeleted = true;
+            user.IsDeleted = true;
             await _appDbContext.SaveChangesAsync(cancellationToken);
 
             return NoContent();

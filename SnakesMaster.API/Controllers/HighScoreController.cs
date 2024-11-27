@@ -1,144 +1,93 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SnakesMaster.API.Data;
 using SnakesMaster.API.Models;
 
 namespace SnakesMaster.API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]/[action]")]
     [ApiController]
-    public class HighScoreController : ControllerBase
+    public class ScoreController : ControllerBase
     {
         private readonly ApplicationDBContext _appDbContext;
 
-        public HighScoreController(ApplicationDBContext appDbContext)
+        public ScoreController(ApplicationDBContext appDbContext)
         {
             _appDbContext = appDbContext;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<GetHighScoresResponse>>> GetHighScores(
-            CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
-        {
-            if (page <= 0 || pageSize <= 0)
-            {
-                return BadRequest("Page and PageSize must be greater than 0.");
-            }
-
-            var highScores = await _appDbContext.HighScores
-                .OrderByDescending(h => h.Score)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(h => new GetHighScoresResponse
-                {
-                    PublicIdentifier = h.PublicIdentifier,
-                    Score = h.Score,
-                    DateAchieved = h.DateAchieved,
-                    ScoredBy = _appDbContext.Users
-                        .Where(u => u.PublicIdentifier == h.ScoredBy && u.IsActive && !u.IsDeleted)
-                        .Select(u => new User
-                        {
-                            PublicIdentifier = u.PublicIdentifier,
-                            FirstName = u.FirstName,
-                            LastName = u.LastName,
-                        })
-                        .FirstOrDefault()
-                })
-                .ToListAsync(cancellationToken);
-
-            return Ok(highScores);
-        }
-
         [HttpGet("{publicIdentifier:guid}")]
-        public async Task<ActionResult<GetHighScoresResponse>> GetHighScoreById(Guid publicIdentifier, CancellationToken cancellationToken)
+        public async Task<ActionResult<GetHighScoreResponse>> GetScoreById(Guid publicIdentifier, CancellationToken cancellationToken)
         {
-            var highScore = await _appDbContext.HighScores
+            var score = await _appDbContext.HighScores
                 .Where(h => h.PublicIdentifier == publicIdentifier)
-                .Select(h => new GetHighScoresResponse
+                .Select(h => new
                 {
-                    PublicIdentifier = h.PublicIdentifier,
-                    Score = h.Score,
-                    DateAchieved = h.DateAchieved,
+                    h.PublicIdentifier,
+                    h.Score,
+                    h.DateAchieved,
                     ScoredBy = _appDbContext.Users
                         .Where(u => u.PublicIdentifier == h.ScoredBy && u.IsActive && !u.IsDeleted)
-                        .Select(u => new User
+                        .Select(u => new
                         {
-                            PublicIdentifier = u.PublicIdentifier,
-                            FirstName = u.FirstName,
-                            LastName = u.LastName,
+                            u.PublicIdentifier,
+                            u.FirstName,
+                            u.LastName
                         })
                         .FirstOrDefault()
                 })
                 .FirstOrDefaultAsync(cancellationToken);
 
-            if (highScore == null)
-                return NotFound($"High score with ID {publicIdentifier} was not found.");
+            if (score == null)
+                return NotFound($"Score with ID {publicIdentifier} was not found.");
 
-            return Ok(highScore);
+            return Ok(score);
         }
 
         [HttpPost]
-        public async Task<ActionResult<CreateHighScoreResponse>> CreateHighScore(
-            [FromBody] CreateHighScoreRequest request, CancellationToken cancellationToken)
+        public async Task<ActionResult> CreateScore([FromBody] int scoreValue, CancellationToken cancellationToken)
         {
-            if (request == null)
-                return BadRequest("Request cannot be null.");
+            if (scoreValue < 0)
+                return BadRequest("Score must be greater than 0.");
+
+            var auth0Identifier = HttpContext.Items["Auth0Identifier"] as string;
+
+            if (string.IsNullOrEmpty(auth0Identifier))
+                return Unauthorized("Auth0Identifier is missing or invalid.");
 
             var user = await _appDbContext.Users
-                .Where(u => u.PublicIdentifier == request.ScoredBy && u.IsActive && !u.IsDeleted)
+                .Where(u => u.Auth0Identifier == auth0Identifier && u.IsActive && !u.IsDeleted)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (user == null)
                 return BadRequest("The user does not exist or is inactive.");
 
-            var newHighScore = new HighScore
+            var newScore = new HighScore
             {
                 PublicIdentifier = Guid.NewGuid(),
-                Score = request.Score,
+                Score = scoreValue,
                 DateAchieved = DateTime.UtcNow,
-                ScoredBy = request.ScoredBy,
+                ScoredBy = user.PublicIdentifier
             };
 
-            _appDbContext.HighScores.Add(newHighScore);
+            _appDbContext.HighScores.Add(newScore);
             await _appDbContext.SaveChangesAsync(cancellationToken);
 
-            var response = new CreateHighScoreResponse
-            {
-                Score = newHighScore.Score,
-                ScoredBy = user,
-                ScoredOn = newHighScore.DateAchieved
-            };
-
-            return CreatedAtAction(nameof(GetHighScoreById), new { publicIdentifier = newHighScore.PublicIdentifier }, response);
-        }
-
-        [HttpPut("{publicIdentifier:guid}")]
-        public async Task<ActionResult> UpdateHighScore(Guid publicIdentifier, [FromBody] CreateHighScoreRequest request, CancellationToken cancellationToken)
-        {
-            var highScoreToUpdate = await _appDbContext.HighScores
-                .FirstOrDefaultAsync(h => h.PublicIdentifier == publicIdentifier, cancellationToken);
-
-            if (highScoreToUpdate == null)
-                return NotFound($"High score with ID {publicIdentifier} was not found.");
-
-            highScoreToUpdate.Score = request.Score;
-            highScoreToUpdate.DateAchieved = DateTime.UtcNow;
-
-            await _appDbContext.SaveChangesAsync(cancellationToken);
-
-            return NoContent();
+            return CreatedAtAction(nameof(GetScoreById), new { publicIdentifier = newScore.PublicIdentifier }, newScore);
         }
 
         [HttpDelete("{publicIdentifier:guid}")]
-        public async Task<ActionResult> DeleteHighScore(Guid publicIdentifier, CancellationToken cancellationToken)
+        public async Task<ActionResult> DeleteScore(Guid publicIdentifier, CancellationToken cancellationToken)
         {
-            var highScoreToDelete = await _appDbContext.HighScores
+            var scoreToDelete = await _appDbContext.HighScores
                 .FirstOrDefaultAsync(h => h.PublicIdentifier == publicIdentifier, cancellationToken);
 
-            if (highScoreToDelete == null)
-                return NotFound($"High score with ID {publicIdentifier} was not found.");
+            if (scoreToDelete == null)
+                return NotFound($"Score with ID {publicIdentifier} was not found.");
 
-            _appDbContext.HighScores.Remove(highScoreToDelete);
+            _appDbContext.HighScores.Remove(scoreToDelete);
             await _appDbContext.SaveChangesAsync(cancellationToken);
 
             return NoContent();

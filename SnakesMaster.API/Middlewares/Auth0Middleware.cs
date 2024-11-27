@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.IdentityModel.Tokens.Jwt;
 
 public class Auth0Middleware
 {
@@ -8,18 +6,38 @@ public class Auth0Middleware
 
     public Auth0Middleware(RequestDelegate next)
     {
-        _next = next; // RequestDelegate is passed automatically by ASP.NET Core
+        _next = next;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var auth0Identifier = context.User?.FindFirst("sub")?.Value; // Extract "sub" (Auth0 Identifier)
-
-        if (!string.IsNullOrEmpty(auth0Identifier))
+        try
         {
-            context.Items["Auth0Identifier"] = auth0Identifier; // Store in context for later use
+            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+
+            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+            {
+                var token = authHeader.Substring("Bearer ".Length).Trim();
+
+                var handler = new JwtSecurityTokenHandler();
+                if (handler.CanReadToken(token))
+                {
+                    var jwtToken = handler.ReadJwtToken(token);
+
+                    var auth0Identifier = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+
+                    if (!string.IsNullOrEmpty(auth0Identifier))
+                    {
+                        context.Items["Auth0Identifier"] = auth0Identifier;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error processing JWT token: {ex.Message}");
         }
 
-        await _next(context); // Pass to the next middleware
+        await _next(context);
     }
 }

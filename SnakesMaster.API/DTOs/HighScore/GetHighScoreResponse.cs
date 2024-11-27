@@ -1,6 +1,6 @@
 ﻿using SnakesMaster.API.Models;
 
-public class GetHighScoresResponse
+public class GetHighScoreResponse
 {
     public Guid PublicIdentifier { get; set; }
     public int Score { get; set; }
